@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <random>
 const size_t n = 10000000ul;
-const size_t matrix_size = 100ul;
+const size_t matrix_size = 500ul;
 
 template<typename T>
 class matrix_t {
@@ -97,7 +97,7 @@ matrix_t<double> matrix_multiply1(const matrix_t<double>& x, const matrix_t<doub
     for (size_t i = 0; i < x.rows(); ++i) {
         for (size_t k = 0; k < y.rows(); ++k) {
             for (size_t j = 0; j < y.cols(); ++j) {
-               z(i, j) += x(i, k) * y(j, k);
+               z(i, j) += x(i, k) * y(k, j);
            }
         }
     }
