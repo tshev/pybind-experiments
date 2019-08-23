@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <random>
 const size_t n = 10000000ul;
-const size_t matrix_size = 500ul;
+const size_t matrix_size = 1000ul;
 
 template<typename T>
 class matrix_t {
@@ -250,8 +250,8 @@ BENCHMARK(BM_inner_product_float);
 BENCHMARK(BM_inner_product_double);
 BENCHMARK(BM_reduce_sum);
 BENCHMARK(BM_reduce_product);
+BENCHMARK(BM_mm2);
 BENCHMARK(BM_mm0);
 BENCHMARK(BM_mm1);
-BENCHMARK(BM_mm2);
 // Run the benchmark
 BENCHMARK_MAIN();
