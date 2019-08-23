@@ -1,8 +1,10 @@
 #include <benchmark/benchmark.h>
+#include <iostream>
 #include <numeric>
 #include <algorithm>
 #include <random>
-size_t n = 10000000ul;
+const size_t n = 10000000ul;
+const size_t matrix_size = 100ul;
 
 template<typename T>
 class matrix_t {
@@ -39,6 +41,9 @@ public:
         return cols_;
     }
 
+    size_t size() const {
+        return data.size();
+    }
 
     matrix_t& operator=(matrix_t&& x) {
         data = std::move(x.data);
@@ -64,11 +69,24 @@ public:
         for (size_t i = 0; i < x.rows(); ++i) {
             for (size_t j = 0; j < y.cols(); ++j) {
                for (size_t k = 0; k < y.rows(); ++k) {
-                   z(i, j) += x(i, k) * y(j, k);
+                   z(i, j) += x(i, k) * y(k, j);
                }
             }
         }
         return z;
+    }
+
+    template<typename O>
+    friend
+    inline
+    O& operator<<(O& out, const matrix_t& x) {
+        for (size_t i = 0; i < x.rows(); ++i) {
+            for (size_t j = 0; j < x.cols(); ++j) {
+                out << x(i, j) << " ";
+            }
+            out << std::endl;
+        }
+        return out;
     }
 };
 
@@ -85,6 +103,7 @@ matrix_t<double> matrix_multiply1(const matrix_t<double>& x, const matrix_t<doub
     }
     return z;
 }
+/*
 template<typename T>
 T transpose(const T& x) {
     T y(x.cols(), x.rows());
@@ -95,18 +114,46 @@ T transpose(const T& x) {
     }
     return y;
 }
+*/
+template<typename T>
+T transpose(const T& x) {
+    T y(x.cols(), x.rows());
+    auto y_first = y.begin();
+    auto y_last = y_first + y.size();
+
+
+    auto x_first = x.begin();
+    auto x_last = x_first + x.size();
+
+    while (y_first != y_last) {
+        auto x_current = x_first;
+        while (x_current != x_last) {
+            *y_first = *x_current;
+            x_current += x.cols();
+            ++y_first;
+        }
+        ++x_first;
+        ++x_last;
+    }
+    for (size_t i = 0; i < x.rows(); ++i) {
+        for (size_t j = 0; j < x.cols(); ++j) {
+            y(j, i) = x(i, j);
+        }
+    }
+    return y;
+}
 
 inline
 matrix_t<double> matrix_multiply_by_transposed(const matrix_t<double>& x, const matrix_t<double>& y) {
-        matrix_t<double> z(x.rows(), y.cols());
-        assert(x.cols() == y.rows());
-        for (size_t i = 0; i < x.rows(); ++i) {
-            for (size_t j = 0; j < y.cols(); ++j) {
-               auto ith_row_of_x = x.begin() + i * x.cols();
-               auto jth_row_of_y = y.begin() + j * y.cols();
-               z(i, j) = std::inner_product(ith_row_of_x, ith_row_of_x + x.cols(),
-                                            jth_row_of_y, double(0.0));
+        matrix_t<double> z(x.rows(), y.rows());
+        auto x_row_last = x.begin() + x.size();
+        auto y_row_last = y.begin() + y.size();
+        auto z_first = z.begin();
+        for(auto x_row = x.begin(); x_row != x_row_last; x_row += x.cols()) {
+            for (auto y_row = y.begin(); y_row != y_row_last; y_row += y.cols()) {
+               *z_first = std::inner_product(x_row, x_row + x.cols(), y_row, double(0.0));
             }
+            ++z_first;
         }
         return z;
 }
@@ -129,7 +176,6 @@ static void BM_inner_product_double(benchmark::State& state) {
 
 static void BM_inner_product_float(benchmark::State& state) {
   // Perform setup here
-  size_t n = 10000000ul;
   std::vector<float> a(n);
   std::random_device rd;
   std::generate(a.begin(), a.end(), [&]() { return float(rd()); });
@@ -142,8 +188,7 @@ static void BM_inner_product_float(benchmark::State& state) {
   }
 }
 
-static void BM_innert_reduce_sum(benchmark::State& state) {
-  size_t n = 10000000ul;
+static void BM_reduce_sum(benchmark::State& state) {
   std::vector<int> a(n);
   std::vector<int> b(n);
   std::vector<int> c(n);
@@ -156,8 +201,7 @@ static void BM_innert_reduce_sum(benchmark::State& state) {
   }
 }
 
-static void BM_innert_reduce_product(benchmark::State& state) {
-  size_t n = 10000000ul;
+static void BM_reduce_product(benchmark::State& state) {
   std::vector<int> a(n);
   std::vector<int> b(n);
   std::vector<int> c(n);
@@ -171,7 +215,7 @@ static void BM_innert_reduce_product(benchmark::State& state) {
 }
 
 static void BM_mm0(benchmark::State& state) {
-  size_t n = 4000ul;
+  size_t n = matrix_size;
   matrix_t<double> x(n, n);
   matrix_t<double> y(n, n);
 
@@ -180,7 +224,7 @@ static void BM_mm0(benchmark::State& state) {
   }
 }
 static void BM_mm1(benchmark::State& state) {
-  size_t n = 4000ul;
+  size_t n = matrix_size;
   matrix_t<double> x(n, n);
   matrix_t<double> y(n, n);
 
@@ -190,22 +234,22 @@ static void BM_mm1(benchmark::State& state) {
 }
 
 static void BM_mm2(benchmark::State& state) {
-  size_t n = 4000ul;
+  size_t n = matrix_size;
   matrix_t<double> x(n, n);
   matrix_t<double> y(n, n);
 
-auto transposed = transpose(y);
   for (auto _ : state) {
+      auto transposed = transpose(x);
       volatile auto result = matrix_multiply_by_transposed(x, transposed);
   }
 }
 
 
 // Register the function as a benchmark
-//BENCHMARK(BM_inner_product_float);
-//BENCHMARK(BM_inner_product_double);
-//BENCHMARK(BM_innert_reduce_sum);
-//BENCHMARK(BM_innert_reduce_product);
+BENCHMARK(BM_inner_product_float);
+BENCHMARK(BM_inner_product_double);
+BENCHMARK(BM_reduce_sum);
+BENCHMARK(BM_reduce_product);
 BENCHMARK(BM_mm0);
 BENCHMARK(BM_mm1);
 BENCHMARK(BM_mm2);
