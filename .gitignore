@@ -1,0 +1,7 @@
+*.swo
+*.swp
+*.so
+*.o
+__pycache__
+*egg-info
+*.out
